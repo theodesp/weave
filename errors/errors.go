@@ -166,8 +166,8 @@ func (kind *Error) Is(err error) bool {
 
 	// If this is a multierror then any of the represented errors match is
 	// good.
-	if multierr, ok := err.(*ValidationError); ok {
-		for _, other := range multierr.Errors {
+	if verrs, ok := err.(ValidationErrors); ok {
+		for _, other := range verrs {
 			if kind.Is(other) {
 				return true
 			}
