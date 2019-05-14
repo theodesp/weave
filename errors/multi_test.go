@@ -21,29 +21,24 @@ func TestValidationErrors(t *testing.T) {
 		return errs
 	}
 
-	result := validate()
-
-	// Casting to ValidationErrors is necessary in tests. In non-tests code
-	// we are not interested in this error precise type, similar as we
-	// never use Error type directly.
-	errs := result.(ValidationErrors)
+	err := validate()
 
 	// The commonly used Is can be used to test the content of the
 	// validation errors container.
-	assert.Equal(t, true, ErrEmpty.Is(errs))
-	assert.Equal(t, true, ErrInput.Is(errs))
-	assert.Equal(t, true, ErrTimeout.Is(errs))
-	assert.Equal(t, true, ErrUnauthorized.Is(errs))
-	assert.Equal(t, false, ErrModel.Is(errs))
-	assert.Equal(t, false, ErrHuman.Is(errs))
+	assert.Equal(t, true, ErrEmpty.Is(err))
+	assert.Equal(t, true, ErrInput.Is(err))
+	assert.Equal(t, true, ErrTimeout.Is(err))
+	assert.Equal(t, true, ErrUnauthorized.Is(err))
+	assert.Equal(t, false, ErrModel.Is(err))
+	assert.Equal(t, false, ErrHuman.Is(err))
 
 	// We can test if the error for a specific field was registered.
-	assert.Equal(t, true, ErrEmpty.Is(errs.For("Name")))
-	assert.Equal(t, false, ErrTimeout.Is(errs.For("Name")))
+	assert.Equal(t, true, ErrEmpty.Is(FilterTag(err, "Name")))
+	assert.Equal(t, false, ErrTimeout.Is(FilterTag(err, "Name")))
 
 	// We can test if general validation errors were captured as well.
-	assert.Equal(t, true, ErrTimeout.Is(errs.For("")))
-	assert.Equal(t, true, ErrUnauthorized.Is(errs.For("")))
-	assert.Equal(t, false, ErrEmpty.Is(errs.For("")))
+	assert.Equal(t, true, ErrTimeout.Is(FilterTag(err, "")))
+	assert.Equal(t, true, ErrUnauthorized.Is(FilterTag(err, "")))
+	assert.Equal(t, false, ErrEmpty.Is(FilterTag(err, "")))
 
 }

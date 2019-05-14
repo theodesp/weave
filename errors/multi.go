@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -22,37 +23,23 @@ func (errs ValidationErrors) Error() string {
 	}
 }
 
-// With returns ValidationErrors with an error added for given field. Use empty
-// field name to add a global error (not related to a single field).
-func (errs ValidationErrors) With(field string, err error) ValidationErrors {
-	if field != "" {
-		err = &fieldErr{field: field, err: err}
-	}
+// With returns ValidationErrors with an error tagged.
+func (errs ValidationErrors) With(tag string, err error) ValidationErrors {
 	if multierr, ok := err.(ValidationErrors); ok {
 		// If nested, then flatten.
 		for _, other := range multierr {
+			if tag != "" {
+				other = &taggedError{tag: tag, err: other}
+			}
 			errs = append(errs, other)
 		}
-	} else {
-		errs = append(errs, err)
+		return errs
 	}
-	return errs
-}
 
-// For returns all errors that are matching given field name. Use empty field
-// name to receive a list of all errors that are not added for any specific
-// field.
-func (errs ValidationErrors) For(field string) ValidationErrors {
-	var res ValidationErrors
-	for _, e := range errs {
-		switch ferr, ok := e.(*fieldErr); {
-		case field == "" && !ok:
-			res = append(res, e)
-		case field != "" && ok:
-			res = append(res, ferr.err)
-		}
+	if tag != "" {
+		err = &taggedError{tag: tag, err: err}
 	}
-	return res
+	return append(errs, err)
 }
 
 func (ValidationErrors) ABCICode() uint32 {
@@ -60,15 +47,39 @@ func (ValidationErrors) ABCICode() uint32 {
 	return 9142
 }
 
-type fieldErr struct {
-	field string
-	err   error
+type taggedError struct {
+	tag string
+	err error
 }
 
-func (e *fieldErr) Error() string {
-	return fmt.Sprintf("%s: %s", e.field, e.err)
+func (e *taggedError) Error() string {
+	return e.err.Error()
 }
 
-func (e *fieldErr) Cause() error {
+func (e *taggedError) Cause() error {
 	return e.err
+}
+
+func FilterTag(err error, pattern string) ValidationErrors {
+	rx, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil
+	}
+
+	var res ValidationErrors
+	switch err := err.(type) {
+	case *taggedError:
+		if rx.MatchString(err.tag) {
+			res = append(res, err.err)
+		}
+	case ValidationErrors:
+		for _, e := range err {
+			if te, ok := e.(*taggedError); ok {
+				if rx.MatchString(te.tag) {
+					res = append(res, te.err)
+				}
+			}
+		}
+	}
+	return res
 }
