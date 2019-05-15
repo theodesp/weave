@@ -4,6 +4,23 @@ import (
 	"testing"
 )
 
+func TestNilMultiErrorCast(t *testing.T) {
+	validate := func() error {
+		var err error
+		if false {
+			err = MultiAdd(err, ErrHuman)
+		}
+		return err
+	}
+
+	err := validate().(Multi)
+
+	if err != nil {
+		t.Fatal("expected nil")
+	}
+
+}
+
 func TestEmptyMultiError(t *testing.T) {
 	if err := MultiAdd(); err != nil {
 		t.Fatalf("empty multi error must be nil, got %#v", err)
